@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mobile Pong</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #000;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        #gameContainer {
+            width: 100vw;
+            max-width: 400px;
+            height: 600px;
+            border: 2px solid #fff;
+            position: relative;
+            background: #000;
+        }
+
+        #paddle {
+            width: 80px;
+            height: 10px;
+            background: #fff;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: left 0.1s ease;
+        }
+
+        #ball {
+            width: 15px;
+            height: 15px;
+            background: #fff;
+            border-radius: 50%;
+            position: absolute;
+            top: 20px;
+            left: 50%;
+        }
+
+        #score {
+            color: #fff;
+            font-size: 24px;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 60px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        @media (max-width: 400px) {
+            #gameContainer {
+                height: 100vh;
+                border: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="score">Score: 0</div>
+        <div id="paddle"></div>
+        <div id="ball"></div>
+        <div class="controls">
+            <button class="control-btn" onmousedown="movePaddle('left')" 
+                    ontouchstart="movePaddle('left')"></button>
+            <button class="control-btn" onmousedown="movePaddle('right')"
+                    ontouchstart="movePaddle('right')"></button>
+        </div>
+    </div>
+
+    <script>
+        const paddle = document.getElementById('paddle');
+        const ball = document.getElementById('ball');
+        const scoreDisplay = document.getElementById('score');
+        const gameContainer = document.getElementById('gameContainer');
+
+        let paddlePos = 50; // Paddle position in percentage
+        let ballX = 50; // Ball X position in percentage
+        let ballY = 20; // Ball Y position in pixels
+        let ballSpeedX = 2; // Ball speed in pixels per frame
+        let ballSpeedY = 2;
+        let score = 0;
+
+        function movePaddle(direction) {
+            if (direction === 'left' && paddlePos > 10) {
+                paddlePos -= 10;
+            } else if (direction === 'right' && paddlePos < 90) {
+                paddlePos += 10;
+            }
+            paddle.style.left = `${paddlePos}%`;
+        }
+
+        function updateBall() {
+            // Update ball position
+            ballX += ballSpeedX;
+            ballY += ballSpeedY;
+
+            // Ball boundaries (gameContainer width: 400px, height: 600px)
+            const containerWidth = gameContainer.offsetWidth;
+            const containerHeight = gameContainer.offsetHeight;
+            const ballSize = 15;
+
+            // Convert ballX from percentage to pixels for collision
+            const ballXpx = (ballX / 100) * containerWidth;
+
+            // Wall collision
+            if (ballXpx <= 0 || ballXpx + ballSize >= containerWidth) {
+                ballSpeedX = -ballSpeedX;
+            }
+            if (ballY <= 0) {
+                ballSpeedY = -ballSpeedY;
+            }
+
+            // Paddle collision
+            const paddleRect = paddle.getBoundingClientRect();
+            const ballRect = ball.getBoundingClientRect();
+            if (
+                ballRect.bottom >= paddleRect.top &&
+                ballRect.top <= paddleRect.bottom &&
+                ballRect.right >= paddleRect.left &&
+                ballRect.left <= paddleRect.right &&
+                ballSpeedY > 0 // Only bounce if moving down
+            ) {
+                ballSpeedY = -ballSpeedY;
+                score += 1;
+                scoreDisplay.textContent = `Score: ${score}`;
+            }
+
+            // Game over (ball misses paddle)
+            if (ballY + ballSize >= containerHeight) {
+                ballX = 50;
+                ballY = 20;
+                ballSpeedX = 2;
+                ballSpeedY = 2;
+                // Score doesn't reset to keep it fun; reset if desired
+            }
+
+            // Apply new position
+            ball.style.left = `${ballX}%`;
+            ball.style.top = `${ballY}px`;
+        }
+
+        // Game loop
+        function gameLoop() {
+            updateBall();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start game
+        gameLoop();
+
+        // Prevent default touch behavior
+        document.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+    </script>
+</body>
+</html>
