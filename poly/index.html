@@ -10,7 +10,7 @@
             text-align: center;
             padding: 20px;
         }
-        input, button {
+        input {
             margin: 10px;
             padding: 5px;
         }
@@ -62,7 +62,6 @@
     <h1>Polygon Angle Calculator</h1>
     <p>Enter the number of sides of your polygon:</p>
     <input type="number" id="sidesInput" min="3" placeholder="e.g., 3 for triangle">
-    <button onclick="calculateAngles()">Calculate</button>
     <div id="polygonContainer">
         <svg id="polygonSvg">
             <!-- Define the gradient -->
@@ -77,10 +76,14 @@
     <div id="result"></div>
 
     <script>
-        function calculateAngles() {
-            const sides = parseInt(document.getElementById('sidesInput').value);
-            const resultDiv = document.getElementById('result');
-            const svg = document.getElementById('polygonSvg');
+        const sidesInput = document.getElementById('sidesInput');
+        const resultDiv = document.getElementById('result');
+        const svg = document.getElementById('polygonSvg');
+
+        sidesInput.addEventListener('input', updatePolygon);
+
+        function updatePolygon() {
+            const sides = parseInt(sidesInput.value);
 
             if (isNaN(sides) || sides < 3) {
                 resultDiv.innerHTML = "Please enter a number of sides (3 or more)!";
