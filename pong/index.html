@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pong Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #gameContainer {
+            width: 400px;
+            height: 600px;
+            background-color: #000;
+            position: relative;
+            overflow: hidden;
+            touch-action: none;
+        }
+        #ball {
+            width: 15px;
+            height: 15px;
+            background-color: #fff;
+            border-radius: 50%;
+            position: absolute;
+        }
+        #paddle {
+            width: 80px;
+            height: 10px;
+            background-color: #fff;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+        }
+        #scoreDisplay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        #speedDisplay {
+            position: absolute;
+            top: 30px;
+            left: 10px;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        #highScoreDisplay {
+            position: absolute;
+            top: 10px;
+            right: 10px; /* Moved to top-right */
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div id="gameContainer">
+            <div id="ball"></div>
+            <div id="paddle"></div>
+            <div id="scoreDisplay">Score: 0</div>
+            <div id="speedDisplay">Speed: 2.0</div>
+            <div id="highScoreDisplay">High Score: 0</div>
+        </div>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('gameContainer');
+        const ball = document.getElementById('ball');
+        const paddle = document.getElementById('paddle');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const speedDisplay = document.getElementById('speedDisplay');
+        const highScoreDisplay = document.getElementById('highScoreDisplay');
+
+        // Initial positions and velocities
+        let ballX = gameContainer.offsetWidth / 2 - 7.5;
+        let ballY = 20;
+        let baseSpeed = 2;
+        let ballSpeedX = baseSpeed;
+        let ballSpeedY = baseSpeed;
+        let paddleX = gameContainer.offsetWidth / 2 - 40;
+        let score = 0;
+        let highScore = getCookie('highScore') ? parseInt(getCookie('highScore')) : 0;
+
+        // Set initial styles
+        ball.style.left = `${ballX}px`;
+        ball.style.top = `${ballY}px`;
+        paddle.style.left = `${paddleX}px`;
+
+        // Update displays initially
+        scoreDisplay.textContent = `Score: ${score}`;
+        speedDisplay.textContent = `Speed: ${baseSpeed.toFixed(1)}`;
+        highScoreDisplay.textContent = `High Score: ${highScore}`;
+
+        // Paddle dragging state
+        let isDragging = false;
+
+        // Mouse events
+        gameContainer.addEventListener('mousedown', startDragging);
+        gameContainer.addEventListener('mousemove', dragPaddle);
+        document.addEventListener('mouseup', stopDragging);
+
+        // Touch events
+        gameContainer.addEventListener('touchstart', startDragging);
+        gameContainer.addEventListener('touchmove', dragPaddle);
+        document.addEventListener('touchend', stopDragging);
+
+        function startDragging(e) {
+            isDragging = true;
+            dragPaddle(e);
+        }
+
+        function dragPaddle(e) {
+            if (!isDragging) return;
+
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const rect = gameContainer.getBoundingClientRect();
+            const containerLeft = rect.left;
+            const containerWidth = rect.width;
+            const paddleWidth = paddle.offsetWidth;
+
+            paddleX = clientX - containerLeft - paddleWidth / 2;
+            paddleX = Math.max(0, Math.min(paddleX, containerWidth - paddleWidth));
+            paddle.style.left = `${paddleX}px`;
+        }
+
+        function stopDragging() {
+            isDragging = false;
+        }
+
+        // Cookie functions
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        function setCookie(name, value, days) {
+            const expires = new Date();
+            expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+            document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+        }
+
+        // Update ball speed and display
+        function updateBallSpeed() {
+            const speedIncrease = Math.floor(score / 5) * 0.5;
+            const newSpeed = baseSpeed + speedIncrease;
+            ballSpeedX = (ballSpeedX >= 0 ? 1 : -1) * newSpeed;
+            ballSpeedY = (ballSpeedY >= 0 ? 1 : -1) * newSpeed;
+            speedDisplay.textContent = `Speed: ${newSpeed.toFixed(1)}`;
+        }
+
+        // Update high score
+        function updateHighScore() {
+            if (score > highScore) {
+                highScore = score;
+                setCookie('highScore', highScore, 365);
+                highScoreDisplay.textContent = `High Score: ${highScore}`;
+            }
+        }
+
+        // Game loop
+        function gameLoop() {
+            // Update ball position
+            ballX += ballSpeedX;
+            ballY += ballSpeedY;
+            ball.style.left = `${ballX}px`;
+            ball.style.top = `${ballY}px`;
+
+            // Wall collisions
+            if (ball.offsetLeft <= 0 || ball.offsetLeft + ball.offsetWidth >= gameContainer.offsetWidth) {
+                ballSpeedX = -ballSpeedX;
+            }
+            if (ball.offsetTop <= 0) {
+                ballSpeedY = -ballSpeedY;
+            }
+            if (ball.offsetTop + ball.offsetHeight >= gameContainer.offsetHeight) {
+                // Ball missed, reset to top and reset score to 0
+                ballX = gameContainer.offsetWidth / 2 - ball.offsetWidth / 2;
+                ballY = 20;
+                ballSpeedX = Math.random() * 4 - 2;
+                ballSpeedY = baseSpeed;
+                score = 0; // Reset score to 0
+                updateBallSpeed();
+                scoreDisplay.textContent = `Score: ${score}`;
+                updateHighScore();
+            }
+
+            // Paddle collision
+            if (
+                ball.offsetTop + ball.offsetHeight >= paddle.offsetTop &&
+                ball.offsetLeft + ball.offsetWidth > paddle.offsetLeft &&
+                ball.offsetLeft < paddle.offsetLeft + paddle.offsetWidth &&
+                ballSpeedY > 0
+            ) {
+                ballSpeedY = -ballSpeedY;
+                score += 1;
+                updateBallSpeed();
+                scoreDisplay.textContent = `Score: ${score}`;
+                updateHighScore();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start the game
+        gameLoop();
+    </script>
+</body>
+</html>
