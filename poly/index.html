@@ -28,9 +28,33 @@
             height: 100%;
         }
         .polygon {
-            fill: rgba(0, 128, 255, 0.2);
             stroke: #0066cc;
             stroke-width: 2;
+            /* Rotation animation */
+            animation: pulseRotate 4s infinite ease-in-out;
+            transform-origin: center;
+            /* Gradient fill */
+            fill: url(#gradient);
+        }
+        /* Define keyframes for pulsing rotation */
+        @keyframes pulseRotate {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.1); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+        /* Gradient animation */
+        @keyframes gradientFade {
+            0% { stop-color: #00f; }
+            25% { stop-color: #f0f; }
+            50% { stop-color: #ff0; }
+            75% { stop-color: #0ff; }
+            100% { stop-color: #00f; }
+        }
+        .gradient-stop-1 {
+            animation: gradientFade 6s infinite;
+        }
+        .gradient-stop-2 {
+            animation: gradientFade 6s infinite reverse;
         }
     </style>
 </head>
@@ -40,37 +64,43 @@
     <input type="number" id="sidesInput" min="3" placeholder="e.g., 3 for triangle">
     <button onclick="calculateAngles()">Calculate</button>
     <div id="polygonContainer">
-        <svg id="polygonSvg"></svg>
+        <svg id="polygonSvg">
+            <!-- Define the gradient -->
+            <defs>
+                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop class="gradient-stop-1" offset="0%" />
+                    <stop class="gradient-stop-2" offset="100%" />
+                </linearGradient>
+            </defs>
+        </svg>
     </div>
     <div id="result"></div>
 
     <script>
         function calculateAngles() {
-            // Get the number of sides from the input
             const sides = parseInt(document.getElementById('sidesInput').value);
             const resultDiv = document.getElementById('result');
             const svg = document.getElementById('polygonSvg');
 
-            // Check if the input is valid
             if (isNaN(sides) || sides < 3) {
                 resultDiv.innerHTML = "Please enter a number of sides (3 or more)!";
-                svg.innerHTML = ''; // Clear the polygon if invalid
+                svg.querySelector('polygon')?.remove(); // Remove polygon if exists
                 return;
             }
 
-            // Calculate angles
             const sumAngles = (sides - 2) * 180;
             const eachAngle = sumAngles / sides;
-
-            // Draw the polygon
             const points = calculatePolygonPoints(sides);
-            const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-            polygon.setAttribute("points", points);
-            polygon.setAttribute("class", "polygon");
-            svg.innerHTML = ''; // Clear previous polygon
-            svg.appendChild(polygon);
 
-            // Show the results
+            // Create or update polygon
+            let polygon = svg.querySelector('polygon');
+            if (!polygon) {
+                polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+                polygon.setAttribute("class", "polygon");
+                svg.appendChild(polygon);
+            }
+            polygon.setAttribute("points", points);
+
             resultDiv.innerHTML = `
                 <p>Number of sides: ${sides}</p>
                 <p>Sum of interior angles: ${sumAngles}°</p>
@@ -79,14 +109,13 @@
         }
 
         function calculatePolygonPoints(sides) {
-            const radius = 100; // Radius of the circle the polygon is inscribed in
-            const centerX = 150; // Center of the SVG (300/2)
+            const radius = 100;
+            const centerX = 150;
             const centerY = 150;
             let points = [];
 
-            // Calculate points for each vertex
             for (let i = 0; i < sides; i++) {
-                const angle = (2 * Math.PI / sides) * i - Math.PI / 2; // Start from top
+                const angle = (2 * Math.PI / sides) * i - Math.PI / 2;
                 const x = centerX + radius * Math.cos(angle);
                 const y = centerY + radius * Math.sin(angle);
                 points.push(`${x},${y}`);
