@@ -78,7 +78,7 @@
         let isDragging = false;
         function movePaddle(e) {
             const source = e.touches?.[0] || e;
-            if (!source.clientX) return; // Skip if no valid coordinates
+            if (!source.clientX) return;
             paddleX = Math.max(0, Math.min(source.clientX - game.getBoundingClientRect().left - 40, 320));
             paddle.style.left = `${paddleX}px`;
         }
@@ -117,12 +117,14 @@
                 displays.score.textContent = `Score: ${score}`;
             }
 
+            const paddleTop = 570; // paddle.offsetTop (600 - 20 - 10)
             if (
-                ball.offsetTop >= 570 &&
-                ball.offsetLeft + 15 > paddle.offsetLeft &&
-                ball.offsetLeft < paddle.offsetLeft + 80 &&
+                ballY + 15 >= paddleTop && // Check ball bottom vs paddle top
+                ballX + 15 > paddleX && 
+                ballX < paddleX + 80 && 
                 ballSpeedY > 0
             ) {
+                ballY = paddleTop - 15; // Position ball at paddle top
                 ballSpeedY = -ballSpeedY;
                 score++;
                 if (score > highScore) {
