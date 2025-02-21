@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pong Game</title>
+    <title>Pong</title>
     <style>
         body {
             display: flex;
@@ -11,12 +11,12 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-color: #f0f0f0;
+            background: #f0f0f0;
         }
         #gameContainer {
             width: 400px;
             height: 600px;
-            background-color: #000;
+            background: #000;
             position: relative;
             overflow: hidden;
             touch-action: none;
@@ -24,193 +24,120 @@
         #ball {
             width: 15px;
             height: 15px;
-            background-color: #fff;
+            background: #fff;
             border-radius: 50%;
             position: absolute;
+            left: 192.5px;
+            top: 20px;
         }
         #paddle {
             width: 80px;
             height: 10px;
-            background-color: #fff;
+            background: #fff;
             position: absolute;
             bottom: 20px;
-            left: 50%;
+            left: 160px;
         }
-        #scoreDisplay {
+        #scoreDisplay, #speedDisplay, #highScoreDisplay {
             position: absolute;
-            top: 10px;
-            left: 10px;
             color: #fff;
-            font-family: Arial, sans-serif;
+            font: 16px Arial, sans-serif;
         }
-        #speedDisplay {
-            position: absolute;
-            top: 30px;
-            left: 10px;
-            color: #fff;
-            font-family: Arial, sans-serif;
-        }
-        #highScoreDisplay {
-            position: absolute;
-            top: 10px;
-            right: 10px; /* Moved to top-right */
-            color: #fff;
-            font-family: Arial, sans-serif;
-        }
+        #scoreDisplay { top: 10px; left: 10px; }
+        #speedDisplay { top: 30px; left: 10px; }
+        #highScoreDisplay { top: 10px; right: 10px; }
     </style>
 </head>
 <body>
-    <div>
-        <div id="gameContainer">
-            <div id="ball"></div>
-            <div id="paddle"></div>
-            <div id="scoreDisplay">Score: 0</div>
-            <div id="speedDisplay">Speed: 2.0</div>
-            <div id="highScoreDisplay">High Score: 0</div>
-        </div>
+    <div id="gameContainer">
+        <div id="ball"></div>
+        <div id="paddle"></div>
+        <div id="scoreDisplay">Score: 0</div>
+        <div id="speedDisplay">Speed: 1.0</div>
+        <div id="highScoreDisplay">High Score: 0</div>
     </div>
 
     <script>
-        const gameContainer = document.getElementById('gameContainer');
+        const game = document.getElementById('gameContainer');
         const ball = document.getElementById('ball');
         const paddle = document.getElementById('paddle');
-        const scoreDisplay = document.getElementById('scoreDisplay');
-        const speedDisplay = document.getElementById('speedDisplay');
-        const highScoreDisplay = document.getElementById('highScoreDisplay');
+        const displays = {
+            score: document.getElementById('scoreDisplay'),
+            speed: document.getElementById('speedDisplay'),
+            high: document.getElementById('highScoreDisplay')
+        };
 
-        // Initial positions and velocities
-        let ballX = gameContainer.offsetWidth / 2 - 7.5;
-        let ballY = 20;
-        let baseSpeed = 2;
-        let ballSpeedX = baseSpeed;
-        let ballSpeedY = baseSpeed;
-        let paddleX = gameContainer.offsetWidth / 2 - 40;
-        let score = 0;
-        let highScore = getCookie('highScore') ? parseInt(getCookie('highScore')) : 0;
+        let ballX = 192.5, ballY = 20, ballSpeedX = 1, ballSpeedY = 1;
+        let paddleX = 160, score = 0, highScore = parseInt(document.cookie.split('; ')
+            .find(row => row.startsWith('highScore='))?.split('=')[1]) || 0;
+        const speedScale = 2, baseSpeed = 1;
 
-        // Set initial styles
-        ball.style.left = `${ballX}px`;
-        ball.style.top = `${ballY}px`;
-        paddle.style.left = `${paddleX}px`;
+        displays.high.textContent = `High Score: ${highScore}`;
 
-        // Update displays initially
-        scoreDisplay.textContent = `Score: ${score}`;
-        speedDisplay.textContent = `Speed: ${baseSpeed.toFixed(1)}`;
-        highScoreDisplay.textContent = `High Score: ${highScore}`;
-
-        // Paddle dragging state
+        // Drag handling
         let isDragging = false;
-
-        // Mouse events
-        gameContainer.addEventListener('mousedown', startDragging);
-        gameContainer.addEventListener('mousemove', dragPaddle);
-        document.addEventListener('mouseup', stopDragging);
-
-        // Touch events
-        gameContainer.addEventListener('touchstart', startDragging);
-        gameContainer.addEventListener('touchmove', dragPaddle);
-        document.addEventListener('touchend', stopDragging);
-
-        function startDragging(e) {
-            isDragging = true;
-            dragPaddle(e);
-        }
-
-        function dragPaddle(e) {
-            if (!isDragging) return;
-
-            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-            const rect = gameContainer.getBoundingClientRect();
-            const containerLeft = rect.left;
-            const containerWidth = rect.width;
-            const paddleWidth = paddle.offsetWidth;
-
-            paddleX = clientX - containerLeft - paddleWidth / 2;
-            paddleX = Math.max(0, Math.min(paddleX, containerWidth - paddleWidth));
+        function movePaddle(e) {
+            const source = e.touches?.[0] || e;
+            if (!source.clientX) return; // Skip if no valid coordinates
+            paddleX = Math.max(0, Math.min(source.clientX - game.getBoundingClientRect().left - 40, 320));
             paddle.style.left = `${paddleX}px`;
         }
 
-        function stopDragging() {
-            isDragging = false;
-        }
+        game.addEventListener('mousedown', e => { isDragging = true; movePaddle(e); });
+        game.addEventListener('mousemove', e => isDragging && movePaddle(e));
+        document.addEventListener('mouseup', () => isDragging = false);
+        game.addEventListener('touchstart', e => { isDragging = true; movePaddle(e); e.preventDefault(); });
+        game.addEventListener('touchmove', e => isDragging && movePaddle(e));
+        document.addEventListener('touchend', () => isDragging = false);
 
-        // Cookie functions
-        function getCookie(name) {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop().split(';').shift();
-        }
-
-        function setCookie(name, value, days) {
-            const expires = new Date();
-            expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-            document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
-        }
-
-        // Update ball speed and display
-        function updateBallSpeed() {
-            const speedIncrease = Math.floor(score / 5) * 0.5;
-            const newSpeed = baseSpeed + speedIncrease;
+        // Speed update
+        function updateSpeed() {
+            const newSpeed = baseSpeed + Math.floor(score / 2) * 0.5;
             ballSpeedX = (ballSpeedX >= 0 ? 1 : -1) * newSpeed;
             ballSpeedY = (ballSpeedY >= 0 ? 1 : -1) * newSpeed;
-            speedDisplay.textContent = `Speed: ${newSpeed.toFixed(1)}`;
-        }
-
-        // Update high score
-        function updateHighScore() {
-            if (score > highScore) {
-                highScore = score;
-                setCookie('highScore', highScore, 365);
-                highScoreDisplay.textContent = `High Score: ${highScore}`;
-            }
+            displays.speed.textContent = `Speed: ${newSpeed.toFixed(1)}`;
         }
 
         // Game loop
-        function gameLoop() {
-            // Update ball position
-            ballX += ballSpeedX;
-            ballY += ballSpeedY;
+        function loop() {
+            ballX += ballSpeedX * speedScale;
+            ballY += ballSpeedY * speedScale;
             ball.style.left = `${ballX}px`;
             ball.style.top = `${ballY}px`;
 
-            // Wall collisions
-            if (ball.offsetLeft <= 0 || ball.offsetLeft + ball.offsetWidth >= gameContainer.offsetWidth) {
-                ballSpeedX = -ballSpeedX;
-            }
-            if (ball.offsetTop <= 0) {
-                ballSpeedY = -ballSpeedY;
-            }
-            if (ball.offsetTop + ball.offsetHeight >= gameContainer.offsetHeight) {
-                // Ball missed, reset to top and reset score to 0
-                ballX = gameContainer.offsetWidth / 2 - ball.offsetWidth / 2;
+            if (ball.offsetLeft <= 0 || ball.offsetLeft >= 385) ballSpeedX = -ballSpeedX;
+            if (ball.offsetTop <= 0) ballSpeedY = -ballSpeedY;
+            if (ball.offsetTop >= 585) {
+                ballX = 192.5;
                 ballY = 20;
                 ballSpeedX = Math.random() * 4 - 2;
                 ballSpeedY = baseSpeed;
-                score = 0; // Reset score to 0
-                updateBallSpeed();
-                scoreDisplay.textContent = `Score: ${score}`;
-                updateHighScore();
+                score = 0;
+                updateSpeed();
+                displays.score.textContent = `Score: ${score}`;
             }
 
-            // Paddle collision
             if (
-                ball.offsetTop + ball.offsetHeight >= paddle.offsetTop &&
-                ball.offsetLeft + ball.offsetWidth > paddle.offsetLeft &&
-                ball.offsetLeft < paddle.offsetLeft + paddle.offsetWidth &&
+                ball.offsetTop >= 570 &&
+                ball.offsetLeft + 15 > paddle.offsetLeft &&
+                ball.offsetLeft < paddle.offsetLeft + 80 &&
                 ballSpeedY > 0
             ) {
                 ballSpeedY = -ballSpeedY;
-                score += 1;
-                updateBallSpeed();
-                scoreDisplay.textContent = `Score: ${score}`;
-                updateHighScore();
+                score++;
+                if (score > highScore) {
+                    highScore = score;
+                    document.cookie = `highScore=${highScore};max-age=${365*24*60*60};path=/`;
+                    displays.high.textContent = `High Score: ${highScore}`;
+                }
+                updateSpeed();
+                displays.score.textContent = `Score: ${score}`;
             }
 
-            requestAnimationFrame(gameLoop);
+            requestAnimationFrame(loop);
         }
 
-        // Start the game
-        gameLoop();
+        loop();
     </script>
 </body>
 </html>
