@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
     <title>Pong</title>
     <style>
         body {
@@ -12,6 +13,7 @@
             height: 100vh;
             margin: 0;
             background: #f0f0f0;
+            overflow: hidden;
         }
         #gameContainer {
             width: 400px;
@@ -46,7 +48,31 @@
         #scoreDisplay { top: 10px; left: 10px; }
         #speedDisplay { top: 30px; left: 10px; }
         #highScoreDisplay { top: 10px; right: 10px; }
+        @media (max-width: 400px) {
+            #gameContainer {
+                width: 100vw;
+                height: 100vh;
+            }
+            #paddle { width: 20vw; }
+            #ball { width: 3.75vw; height: 3.75vw; }
+        }
     </style>
+    <!-- Inline Web App Manifest -->
+    <link rel="manifest" href="data:application/manifest+json,{
+        'name': 'Pong',
+        'short_name': 'Pong',
+        'start_url': '.',
+        'display': 'standalone',
+        'background_color': '#f0f0f0',
+        'theme_color': '#000000',
+        'icons': [
+            {
+                'src': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAALVBMVEUAAAD///8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACZ6VxjAAAADXRSTlMAECAwQFBgYHCAkJCwsLDjaQAAAE5JREFUOI3tkksOACEQREX//9oWIQvbtGDDmu1rW0hI9uMkSZIkSZIkSZIkSZIkSf4Pof0Pof0Pof0Pof0Pof0Pof0Pof0Pof0n8AcBTwUGpR8H2wAAAABJRU5ErkJggg==',
+                'sizes': '32x32',
+                'type': 'image/png'
+            }
+        ]
+    }">
 </head>
 <body>
     <div id="gameContainer">
@@ -58,6 +84,7 @@
     </div>
 
     <script>
+        // Game logic
         const game = document.getElementById('gameContainer');
         const ball = document.getElementById('ball');
         const paddle = document.getElementById('paddle');
@@ -79,7 +106,8 @@
         function movePaddle(e) {
             const source = e.touches?.[0] || e;
             if (!source.clientX) return;
-            paddleX = Math.max(0, Math.min(source.clientX - game.getBoundingClientRect().left - 40, 320));
+            const gameRect = game.getBoundingClientRect();
+            paddleX = Math.max(0, Math.min(source.clientX - gameRect.left - 40, gameRect.width - 80));
             paddle.style.left = `${paddleX}px`;
         }
 
@@ -100,15 +128,17 @@
 
         // Game loop
         function loop() {
+            const gameWidth = game.offsetWidth;
+            const gameHeight = game.offsetHeight;
             ballX += ballSpeedX * speedScale;
             ballY += ballSpeedY * speedScale;
             ball.style.left = `${ballX}px`;
             ball.style.top = `${ballY}px`;
 
-            if (ball.offsetLeft <= 0 || ball.offsetLeft >= 385) ballSpeedX = -ballSpeedX;
+            if (ball.offsetLeft <= 0 || ball.offsetLeft >= gameWidth - 15) ballSpeedX = -ballSpeedX;
             if (ball.offsetTop <= 0) ballSpeedY = -ballSpeedY;
-            if (ball.offsetTop >= 585) {
-                ballX = 192.5;
+            if (ball.offsetTop >= gameHeight - 15) {
+                ballX = gameWidth / 2 - 7.5;
                 ballY = 20;
                 ballSpeedX = Math.random() * 4 - 2;
                 ballSpeedY = baseSpeed;
@@ -117,14 +147,14 @@
                 displays.score.textContent = `Score: ${score}`;
             }
 
-            const paddleTop = 570; // paddle.offsetTop (600 - 20 - 10)
+            const paddleTop = gameHeight - 30;
             if (
-                ballY + 15 >= paddleTop && // Check ball bottom vs paddle top
+                ballY + 15 >= paddleTop && 
                 ballX + 15 > paddleX && 
                 ballX < paddleX + 80 && 
                 ballSpeedY > 0
             ) {
-                ballY = paddleTop - 15; // Position ball at paddle top
+                ballY = paddleTop - 15;
                 ballSpeedY = -ballSpeedY;
                 score++;
                 if (score > highScore) {
@@ -140,6 +170,58 @@
         }
 
         loop();
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+            const swScript = `
+                const CACHE_NAME = 'pong-cache-v1';
+                const urlsToCache = ['/'];
+
+                self.addEventListener('install', event => {
+                    event.waitUntil(
+                        caches.open(CACHE_NAME).then(cache => {
+                            return cache.addAll(urlsToCache);
+                        }).catch(err => console.log('Cache open failed: ' + err))
+                    );
+                });
+
+                self.addEventListener('fetch', event => {
+                    event.respondWith(
+                        caches.match(event.request).then(response => {
+                            return response || fetch(event.request).catch(() => {
+                                return caches.match('/');
+                            });
+                        })
+                    );
+                });
+
+                self.addEventListener('activate', event => {
+                    const cacheWhitelist = [CACHE_NAME];
+                    event.waitUntil(
+                        caches.keys().then(cacheNames => {
+                            return Promise.all(
+                                cacheNames.map(cacheName => {
+                                    if (cacheWhitelist.indexOf(cacheName) === -1) {
+                                        return caches.delete(cacheName);
+                                    }
+                                })
+                            );
+                        })
+                    );
+                });
+            `;
+            const blob = new Blob([swScript], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(blob);
+            navigator.serviceWorker.register(swUrl, { scope: '/' })
+                .then(reg => {
+                    console.log('Service Worker registered with scope:', reg.scope);
+                })
+                .catch(err => {
+                    console.error('Service Worker registration failed:', err);
+                });
+        } else if (location.protocol === 'file:') {
+            console.log('Service Worker not supported when running from file:// protocol. Please use a local server.');
+        }
     </script>
 </body>
 </html>
